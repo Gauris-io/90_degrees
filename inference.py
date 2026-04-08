@@ -1,9 +1,9 @@
 import os
 import json
 from openai import OpenAI
-from env import TalentArbitrageEnv, Action 
 from dotenv import load_dotenv 
 
+# Load environment variables
 load_dotenv() 
 
 from env import TalentArbitrageEnv, Action
@@ -17,15 +17,13 @@ You are an autonomous sourcing agent utilizing a Talent Graph network.
 Reply ONLY with a strictly valid JSON object representing your next action.
 
 Valid commands: "search", "shortlist", "submit", "graph_recommend"
-If a client asks for a skill that is too expensive, use "graph_recommend" and pass the "target_skill" to find cheaper, structurally similar talent.
-
 Schema:
 {
     "command": "string",
-    "search_skill": "string (optional)",
-    "search_region": "string (optional)",
-    "target_skill": "string (optional, for graph_recommend)",
-    "candidate_id": integer (optional, for shortlist)
+    "search_skill": "string",
+    "search_region": "string",
+    "target_skill": "string",
+    "candidate_id": integer
 }
 """
 
@@ -41,7 +39,7 @@ def main():
         
         step_count = 0
         done = False
-        cumulative_reward = 0.0
+        last_reward = 0.01  # Use this to report the final task score
         
         while not done:
             step_count += 1
@@ -59,19 +57,19 @@ def main():
                     max_tokens=200
                 )
                 raw_response = response.choices[0].message.content
-                action = Action(**json.loads(raw_response))
+                action_data = json.loads(raw_response)
+                action = Action(**action_data)
             except Exception as e:
-                action = Action(command="submit") # Fallback
+                action = Action(command="submit")
                 
             obs, reward, done, info = env.step(action)
-            cumulative_reward += reward
+            last_reward = reward  # Update with the most recent step's reward
             
-            print(f"[STEP] {step_count} | Action: {action.model_dump_json()} | Reward: {reward:.2f} | Done: {done}")
+            print(f"[STEP] {step_count} | Action: {action.command} | Step Reward: {reward:.2f} | Done: {done}")
             
             if step_count >= 15: break
 
-        print(f"[END] Task: {task_name} | Final Score: {cumulative_reward:.2f}")
+        print(f"[END] Task: {task_name} | Final Task Score: {last_reward:.2f}")
 
 if __name__ == "__main__":
     main()
-    

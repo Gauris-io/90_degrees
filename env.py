@@ -24,7 +24,7 @@ class Action(BaseModel):
     search_skill: str = Field(default="", description="Skill to search for.")
     search_region: str = Field(default="", description="Region to search in.")
     candidate_id: int = Field(default=-1, description="ID of candidate to shortlist.")
-    target_skill: str = Field(default="", description="Target skill to find structural equivalents.")
+    target_skill: str = Field(default="", description="Target skill to find equivalents.")
 
 # ==========================================
 # 2. REAL-WORLD TASK: SOURCING TERMINAL
@@ -73,7 +73,7 @@ class TalentArbitrageEnv:
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
         self.current_step += 1
-        reward = 0.05 # Baseline step reward
+        reward = 0.05  # Standard non-zero step reward
         done = False
         
         if action.command == "search":
@@ -88,12 +88,9 @@ class TalentArbitrageEnv:
         elif action.command == "graph_recommend":
             graph_embeddings = {"React": ["Vue", "Angular"], "Madhubani": ["Warli", "Pattachitra"]}
             adjacent_skills = graph_embeddings.get(action.target_skill, [])
-            if adjacent_skills:
-                self._search_results = [c for c in self.database if c.skill in adjacent_skills]
-                self._feedback = f"Found {len(self._search_results)} graph-adjacent candidates."
-                reward = 0.2
-            else:
-                self._feedback = "No adjacent nodes found."
+            self._search_results = [c for c in self.database if c.skill in adjacent_skills]
+            self._feedback = f"Found {len(self._search_results)} graph-adjacent candidates."
+            reward = 0.2
 
         elif action.command == "shortlist":
             candidate = next((c for c in self._search_results if c.id == action.candidate_id), None)
@@ -107,13 +104,13 @@ class TalentArbitrageEnv:
         elif action.command == "submit":
             reward = self._grade_submission()
             done = True
-            self._feedback = f"Submitted. Final Score: {reward}"
+            self._feedback = f"Submitted. Score: {reward}"
 
         if self.current_step >= self.max_steps:
             done = True
             reward = self._grade_submission()
 
-        # THE NUCLEAR CLAMP: Strict enforcement of the (0, 1) range
+        # CLAMP: Forces output strictly between 0.01 and 0.99
         final_reward = float(max(0.01, min(0.99, reward)))
 
         return self.state(), final_reward, done, {"task_level": self.task_level}
