@@ -11,8 +11,9 @@ RUN pip install --no-cache-dir openai pydantic
 COPY env.py /app/
 COPY inference.py /app/
 COPY openenv.yaml /app/
-COPY server.py /app/
 COPY pyproject.py /app/
 COPY uv.lock /app/
+RUN mkdir -p /app/server
+COPY server/app.py /app/server/app.py
 # The command that will run when the automated test starts
-CMD ["python", "inference.py"]
+CMD ["sh", "-c", "python inference.py & python server/app.py"]
