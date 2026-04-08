@@ -1,3 +1,11 @@
+---
+title: QuantHire
+emoji: 🌎
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
 # GeoTalent Arbitrage Agent
 
 Built for the OpenEnv Hackathon.
