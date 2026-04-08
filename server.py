@@ -20,5 +20,10 @@ class OpenEnvHandler(BaseHTTPRequestHandler):
         }
         self.wfile.write(json.dumps(dummy_response).encode('utf-8'))
 
-print("Starting OpenEnv submission server on port 7860...")
-HTTPServer(('0.0.0.0', 7860), OpenEnvHandler).serve_forever()
+def main():
+    print("Starting OpenEnv submission server on port 7860...")
+    server = HTTPServer(('0.0.0.0', 7860), OpenEnvHandler)
+    server.serve_forever()
+
+if __name__ == '__main__':
+    main()

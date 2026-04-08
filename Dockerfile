@@ -13,5 +13,6 @@ COPY inference.py /app/
 COPY openenv.yaml /app/
 COPY server.py /app/
 COPY pyproject.py /app/
+COPY uv.lock /app/
 # The command that will run when the automated test starts
 CMD ["python", "inference.py"]
