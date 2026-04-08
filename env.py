@@ -74,7 +74,8 @@ class TalentArbitrageEnv:
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
         self.current_step += 1
-        reward = 0.0
+        # Use 0.01 as a base non-zero floor
+        reward = 0.01
         done = False
         
         if action.command == "search":
@@ -88,7 +89,6 @@ class TalentArbitrageEnv:
 
         elif action.command == "graph_recommend":
             self._feedback = f"Running Graph Message Passing for: {action.target_skill}"
-            # GNN Mock Logic
             graph_embeddings = {
                 "React": ["Vue", "Angular"],
                 "Madhubani": ["Warli", "Pattachitra"]
@@ -98,7 +98,7 @@ class TalentArbitrageEnv:
                 hidden_talent = [c for c in self.database if c.skill in adjacent_skills]
                 self._search_results = hidden_talent
                 self._feedback += f" | Found {len(hidden_talent)} candidates with adjacent graph embeddings."
-                reward += 0.3 # High reward for using advanced tools
+                reward += 0.3 
             else:
                 self._feedback += " | No adjacent nodes found."
 
@@ -125,22 +125,29 @@ class TalentArbitrageEnv:
             self._feedback = "Max steps reached."
             reward += self._grade_submission()
 
+        # CLAMP: Ensure reward is strictly between 0 and 1 (0.01 to 0.99)
+        reward = max(0.01, min(0.99, reward))
+
         return self.state(), reward, done, {"task_level": self.task_level}
 
     def _grade_submission(self) -> float:
-        if not self._shortlist: return 0.0
+        # Use 0.01 for absolute failures and 0.99 for absolute success
+        if not self._shortlist: return 0.01
         
         if self.task_level == "easy":
-            if len(self._shortlist) == 1 and self._shortlist[0].skill == "Madhubani" and self._shortlist[0].asking_price < 1000: return 1.0
-            return 0.5 if len(self._shortlist) == 1 else 0.0
+            if len(self._shortlist) == 1 and self._shortlist[0].skill == "Madhubani" and self._shortlist[0].asking_price < 1000: 
+                return 0.99
+            return 0.5 if len(self._shortlist) == 1 else 0.01
 
         elif self.task_level == "medium":
             has_react_alt = any(c.skill in ["Vue", "Angular"] and c.asking_price < 1000 for c in self._shortlist)
-            return 1.0 if has_react_alt and len(self._shortlist) == 1 else 0.0
+            return 0.99 if has_react_alt and len(self._shortlist) == 1 else 0.01
 
         elif self.task_level == "hard":
             has_madhubani = any(c.skill == "Madhubani" and c.asking_price < 1000 for c in self._shortlist)
             has_react_alt = any(c.skill in ["Vue", "Angular"] and c.asking_price < 1000 for c in self._shortlist)
-            if has_madhubani and has_react_alt and len(self._shortlist) == 2: return 1.0
-            elif has_madhubani or has_react_alt: return 0.5
-            return 0.0
+            if has_madhubani and has_react_alt and len(self._shortlist) == 2: 
+                return 0.99
+            elif has_madhubani or has_react_alt: 
+                return 0.5
+            return 0.01
