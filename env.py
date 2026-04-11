@@ -2,9 +2,6 @@ import logging
 from typing import List, Tuple, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
-# ==========================================
-# 1. OPENENV SPEC: PYDANTIC MODELS
-# ==========================================
 class Candidate(BaseModel):
     id: int
     skill: str
@@ -26,9 +23,6 @@ class Action(BaseModel):
     candidate_id: int = Field(default=-1, description="ID of candidate to shortlist.")
     target_skill: str = Field(default="", description="Target skill to find equivalents.")
 
-# ==========================================
-# 2. REAL-WORLD TASK: SOURCING TERMINAL
-# ==========================================
 class TalentArbitrageEnv:
     def __init__(self, task_level: Literal["easy", "medium", "hard"] = "easy"):
         self.task_level = task_level
@@ -43,7 +37,6 @@ class TalentArbitrageEnv:
             Candidate(id=5, skill="Vue", region="Bihar", asking_price=900),
             Candidate(id=6, skill="Warli", region="Maharashtra", asking_price=600),
         ]
-        
         self._search_results: List[Candidate] = []
         self._shortlist: List[Candidate] = []
         self._feedback = "System initialized."
@@ -73,7 +66,7 @@ class TalentArbitrageEnv:
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
         self.current_step += 1
-        reward = 0.05  # Standard non-zero step reward
+        reward = 0.0  # Intermediate steps MUST be 0.0
         done = False
         
         if action.command == "search":
@@ -83,37 +76,29 @@ class TalentArbitrageEnv:
                 and (not action.search_region or action.search_region.lower() in c.region.lower())
             ]
             self._feedback = f"Search returned {len(self._search_results)} results."
-            reward = 0.1
 
         elif action.command == "graph_recommend":
             graph_embeddings = {"React": ["Vue", "Angular"], "Madhubani": ["Warli", "Pattachitra"]}
             adjacent_skills = graph_embeddings.get(action.target_skill, [])
             self._search_results = [c for c in self.database if c.skill in adjacent_skills]
             self._feedback = f"Found {len(self._search_results)} graph-adjacent candidates."
-            reward = 0.2
 
         elif action.command == "shortlist":
             candidate = next((c for c in self._search_results if c.id == action.candidate_id), None)
             if candidate and candidate not in self._shortlist:
                 self._shortlist.append(candidate)
                 self._feedback = f"Added Candidate {candidate.id} to shortlist."
-                reward = 0.3
             else:
                 self._feedback = "Invalid or duplicate candidate."
 
-        elif action.command == "submit":
-            reward = self._grade_submission()
+        # Apply the clamped score ONLY when the episode ends
+        if action.command == "submit" or self.current_step >= self.max_steps:
             done = True
-            self._feedback = f"Submitted. Score: {reward}"
+            raw_grade = self._grade_submission()
+            reward = float(max(0.01, min(0.99, raw_grade)))
+            self._feedback = f"Episode ended. Final Score: {reward}"
 
-        if self.current_step >= self.max_steps:
-            done = True
-            reward = self._grade_submission()
-
-        # CLAMP: Forces output strictly between 0.01 and 0.99
-        final_reward = float(max(0.01, min(0.99, reward)))
-
-        return self.state(), final_reward, done, {"task_level": self.task_level}
+        return self.state(), reward, done, {"task_level": self.task_level}
 
     def _grade_submission(self) -> float:
         if not self._shortlist: return 0.01
@@ -122,11 +107,9 @@ class TalentArbitrageEnv:
         if self.task_level == "easy":
             if any(c.skill == "Madhubani" and c.asking_price < 1000 for c in self._shortlist):
                 score = 0.99
-        
         elif self.task_level == "medium":
             if any(c.skill in ["Vue", "Angular"] and c.asking_price < 1000 for c in self._shortlist):
                 score = 0.99
-                
         elif self.task_level == "hard":
             has_madhu = any(c.skill == "Madhubani" and c.asking_price < 1000 for c in self._shortlist)
             has_alt = any(c.skill in ["Vue", "Angular"] and c.asking_price < 1000 for c in self._shortlist)

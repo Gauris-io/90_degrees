@@ -1,14 +1,4 @@
-version: "1.0"
-name: "talent-graph-arbitrage-env"
-description: "Agent acts as a sourcing recruiter, navigating a DB and using Graph Neural Network (GNN) tools to find undervalued geographic talent."
-entrypoint: "env:TalentArbitrageEnv"
-tasks:
-  - name: "easy"
-    description: "Source a single undervalued Madhubani artist."
-  - name: "medium"
-    description: "Use graph_recommend to source an undervalued React-equivalent developer."
-  - name: "hard"
-    description: "Source a complex mix of exact matches and GNN graph adjacencies to meet a strict budget."
-metadata:
-  authors: ["Your Name"]
-  tags: ["recruiting", "search", "arbitrage", "GNN"]
+name: QuantHire
+version: 0.1.0
+description: "GeoTalent Arbitrage RL Environment"
+entry_point: "server.app:main"
